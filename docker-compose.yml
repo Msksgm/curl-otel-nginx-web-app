@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    image: mux-demo-app:latest
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${PUBLIC_PORT:-8080}:80"
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - type: bind
+        source: ${PWD}/nginx/nginx.conf
+        target: /etc/nginx/nginx.conf
+      - type: bind
+        source: ${PWD}/nginx/conf.d
+        target: /etc/nginx/conf.d
+      - type: bind
+        source: ${PWD}/static
+        target: /usr/share/nginx/html
