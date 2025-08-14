@@ -49,15 +49,6 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"id": id, "profile": map[string]any{"nickname": "guest", "created_at": time.Now().UTC()}})
 	})
 
-	mux.HandleFunc("POST /echo", func(w http.ResponseWriter, r *http.Request) {
-		var body any
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"you_sent": body, "at": time.Now().UTC()})
-	})
-
 	handler := logging(mux)
 
 	srv := &http.Server{
