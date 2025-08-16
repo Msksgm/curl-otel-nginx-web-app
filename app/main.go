@@ -109,7 +109,9 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(r.Context(), "health_check")
+		// Extract parent context from incoming request
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		_, span := tracer.Start(ctx, "health_check")
 		defer span.End()
 
 		span.SetAttributes(attribute.String("http.target", r.URL.Path))
@@ -117,7 +119,9 @@ func main() {
 	})
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(r.Context(), "root")
+		// Extract parent context from incoming request
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		_, span := tracer.Start(ctx, "root")
 		defer span.End()
 
 		span.SetAttributes(attribute.String("http.target", r.URL.Path))
@@ -125,7 +129,9 @@ func main() {
 	})
 
 	mux.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(r.Context(), "hello")
+		// Extract parent context from incoming request
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		_, span := tracer.Start(ctx, "hello")
 		defer span.End()
 
 		name := r.URL.Query().Get("name")
@@ -140,7 +146,9 @@ func main() {
 	})
 
 	mux.HandleFunc("GET /users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		_, span := tracer.Start(r.Context(), "get_user")
+		// Extract parent context from incoming request
+		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+		_, span := tracer.Start(ctx, "get_user")
 		defer span.End()
 
 		id := r.PathValue("id")
