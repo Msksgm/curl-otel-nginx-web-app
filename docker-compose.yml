@@ -9,11 +9,6 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=host.docker.internal:4317
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
 
   nginx:
     image: nginx:1.27-bookworm-otel
