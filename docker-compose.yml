@@ -6,7 +6,8 @@ services:
     image: mux-demo-app:latest
     restart: unless-stopped
     environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=host.docker.internal:4317
+      - NEW_RELIC_OTLP_ENDPOINT=otlp.nr-data.net:4317
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -18,15 +19,21 @@ services:
     depends_on:
       app:
         condition: service_started
+    environment:
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - type: bind
-        source: ${PWD}/nginx/nginx.conf
-        target: /etc/nginx/nginx.conf
+        source: ${PWD}/nginx/nginx.conf.template
+        target: /etc/nginx/nginx.conf.template
+      - type: bind
+        source: ${PWD}/nginx/docker-entrypoint.sh
+        target: /docker-entrypoint.sh
       - type: bind
         source: ${PWD}/nginx/conf.d
         target: /etc/nginx/conf.d
       - type: bind
         source: ${PWD}/static
         target: /usr/share/nginx/html
+    entrypoint: /docker-entrypoint.sh

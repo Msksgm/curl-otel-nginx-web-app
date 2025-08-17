@@ -35,18 +35,26 @@ func logging(next http.Handler) http.Handler {
 }
 
 func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	// Get OTLP endpoint from environment variable or use default
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	// Get New Relic OTLP endpoint from environment variable or use default
+	endpoint := os.Getenv("NEW_RELIC_OTLP_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "host.docker.internal:4317"
+		return nil, fmt.Errorf("NEW_RELIC_OTLP_ENDPOINT environment variable is required")
 	}
 
-	log.Printf("Initializing OpenTelemetry with endpoint: %s", endpoint)
+	// Get New Relic API key from environment variable
+	apiKey := os.Getenv("NEW_RELIC_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("NEW_RELIC_API_KEY environment variable is required")
+	}
 
-	// Create OTLP trace exporter with direct endpoint configuration
+	log.Printf("Initializing OpenTelemetry with New Relic endpoint: %s", endpoint)
+
+	// Create OTLP trace exporter with New Relic configuration
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithEndpoint(endpoint),
-		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithHeaders(map[string]string{
+			"api-key": apiKey,
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)

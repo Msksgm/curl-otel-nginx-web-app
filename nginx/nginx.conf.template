@@ -15,8 +15,8 @@ http {
     endpoint https://otlp.nr-data.net:4317;
 
     # v0.1.2+ でカスタムヘッダ可。ここで Ingest License Key を渡す
-    # 変数展開をせずに固定値を入れるか、起動時に envsubst 等で差し込み
-    header "api-key" "NEW_RELIC_API_KEY";
+    # envsubst で環境変数を展開
+    header "api-key" "${NEW_RELIC_API_KEY}";
 
     # 必要なら信頼 CA を指定（例は Alpine）
     # trusted_certificate /etc/ssl/certs/ca-certificates.crt;
