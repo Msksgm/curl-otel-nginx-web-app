@@ -53,6 +53,7 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithEndpoint(endpoint),
 		otlptracegrpc.WithHeaders(map[string]string{
+			"Accept":  "*/*",
 			"api-key": apiKey,
 		}),
 	)
@@ -67,7 +68,9 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 			semconv.SchemaURL,
 			semconv.ServiceName("go-app"),
 			semconv.ServiceVersion("1.0.0"),
+			semconv.ServiceInstanceID("go-app-001"),
 			attribute.String("environment", "development"),
+			attribute.String("deployment.environment", "development"),
 		),
 	)
 	if err != nil {
@@ -94,8 +97,7 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 
 func main() {
 	// Initialize OpenTelemetry
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 
 	tp, err := initTracer(ctx)
 	if err != nil {
@@ -142,6 +144,12 @@ func main() {
 		_, span := tracer.Start(ctx, "hello_handler")
 		defer span.End()
 
+		// Log trace information for debugging
+		if spanCtx := span.SpanContext(); spanCtx.IsValid() {
+			log.Printf("Handling /hello request - TraceID: %s, SpanID: %s",
+				spanCtx.TraceID().String(), spanCtx.SpanID().String())
+		}
+
 		name := r.URL.Query().Get("name")
 		if name == "" {
 			name = "World"
@@ -167,8 +175,18 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]any{"id": id, "profile": map[string]any{"nickname": "guest", "created_at": time.Now().UTC()}})
 	})
 
-	// Wrap handler with OpenTelemetry HTTP instrumentation
-	handler := otelhttp.NewHandler(logging(mux), "http-server")
+	// Wrap handler with OpenTelemetry HTTP instrumentation with proper options
+	handler := otelhttp.NewHandler(
+		logging(mux),
+		"http-server",
+		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+			// Create more descriptive span names based on the route
+			return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+		}),
+		otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
+		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
+		otelhttp.WithPropagators(otel.GetTextMapPropagator()),
+	)
 
 	srv := &http.Server{
 		Addr:              ":8080",
