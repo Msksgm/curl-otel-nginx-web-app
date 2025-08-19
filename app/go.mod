@@ -3,6 +3,7 @@ module github.com/Msksgm/curl-otel-nginx-web-app
 go 1.23.4
 
 require (
+	github.com/go-chi/chi/v5 v5.2.2
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0

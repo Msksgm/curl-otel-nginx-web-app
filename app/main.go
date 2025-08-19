@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -24,14 +26,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-func logging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start))
-	})
 }
 
 func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
@@ -116,9 +110,14 @@ func main() {
 
 	tracer := otel.Tracer("go-app")
 
-	mux := http.NewServeMux()
+	// Create chi router
+	r := chi.NewRouter()
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	// Add chi middleware for logging
+	r.Use(middleware.Logger)
+
+	// Define routes
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		// The context already contains trace information from otelhttp middleware
 		ctx := r.Context()
 		_, span := tracer.Start(ctx, "health_check")
@@ -128,17 +127,17 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		// The context already contains trace information from otelhttp middleware
 		ctx := r.Context()
 		_, span := tracer.Start(ctx, "root_handler")
 		defer span.End()
 
 		span.SetAttributes(attribute.String("http.target", r.URL.Path))
-		fmt.Fprintln(w, "Welcome to the standard library HTTP server behind Nginx!")
+		fmt.Fprintln(w, "Welcome to the chi HTTP server behind Nginx!")
 	})
 
-	mux.HandleFunc("GET /hello", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
 		// The context already contains trace information from otelhttp middleware
 		ctx := r.Context()
 		_, span := tracer.Start(ctx, "hello_handler")
@@ -161,13 +160,13 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("Hello, %s!", name)})
 	})
 
-	mux.HandleFunc("GET /users/{id}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		// The context already contains trace information from otelhttp middleware
 		ctx := r.Context()
 		_, span := tracer.Start(ctx, "get_user_handler")
 		defer span.End()
 
-		id := r.PathValue("id")
+		id := chi.URLParam(r, "id")
 		span.SetAttributes(
 			attribute.String("http.target", r.URL.Path),
 			attribute.String("user.id", id),
@@ -177,7 +176,7 @@ func main() {
 
 	// Wrap handler with OpenTelemetry HTTP instrumentation with proper options
 	handler := otelhttp.NewHandler(
-		logging(mux),
+		r,
 		"http-server",
 		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 			// Create more descriptive span names based on the route
