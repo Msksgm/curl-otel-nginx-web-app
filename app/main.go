@@ -22,11 +22,6 @@ import (
 
 var tracer trace.Tracer
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
 
 func newExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	// Get New Relic OTLP endpoint from environment variable or use default
@@ -79,11 +74,14 @@ func newTracerProvider(exp sdktrace.SpanExporter) *sdktrace.TracerProvider {
 }
 
 func getHealtz(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	data, _ := json.Marshal(map[string]string{"status": "ok"})
+	w.Write(data)
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Welcome to the chi HTTP server behind Nginx!")
+	w.Write([]byte("Welcome to the chi HTTP server behind Nginx!\n"))
 }
 
 func getHello(w http.ResponseWriter, r *http.Request) {
@@ -91,12 +89,18 @@ func getHello(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "World"
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("Hello, %s!", name)})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	data, _ := json.Marshal(map[string]string{"message": fmt.Sprintf("Hello, %s!", name)})
+	w.Write(data)
 }
 
 func getUserByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	writeJSON(w, http.StatusOK, map[string]any{"id": id, "profile": map[string]any{"nickname": "guest", "created_at": time.Now().UTC()}})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	data, _ := json.Marshal(map[string]any{"id": id, "profile": map[string]any{"nickname": "guest", "created_at": time.Now().UTC()}})
+	w.Write(data)
 }
 
 func main() {
