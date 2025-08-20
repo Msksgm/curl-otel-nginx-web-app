@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: app/Dockerfile
     image: mux-demo-app:latest
-    restart: unless-stopped
     environment:
       - NEW_RELIC_OTLP_ENDPOINT=otlp.nr-data.net:4317
       - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY}
@@ -13,7 +12,6 @@ services:
 
   nginx:
     image: nginx:1.27-bookworm-otel
-    restart: unless-stopped
     ports:
       - "${PUBLIC_PORT:-8080}:80"
     depends_on:
